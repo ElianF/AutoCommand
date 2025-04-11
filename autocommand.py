@@ -27,7 +27,13 @@ class Runner:
                 return
         if is_locked: lock.release()
 
-        result = subprocess.run(shlex.split(job), stdout=subprocess.PIPE)
+        try:
+            result = subprocess.run(shlex.split(job), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        
+        except FileNotFoundError:
+            successful = False
+        else:
+            successful = True
 
         if is_locked: lock.acquire()
 
@@ -39,10 +45,12 @@ class Runner:
         else:
             index = max([int(i) for i in database.keys()]) + 1
 
-        if result.stdout != None:
+        if successful:
             stdout_path.joinpath(str(index)).write_bytes(result.stdout)
-        if result.stderr != None:
             stderr_path.joinpath(str(index)).write_bytes(result.stderr)
+        else:
+            stdout_path.joinpath(str(index)).write_bytes(b'')
+            stderr_path.joinpath(str(index)).write_text('[AUTOCOMMAND] UNKNOWN_COMMAND_ERROR')
 
         database[str(index)] = job
         with open(database_path, "w") as fd:
@@ -72,7 +80,10 @@ def main():
     args = parser.parse_args()
 
     if args.subparsers == 'clear':
-        pass
+        for path in pathlib.Path("storage").rglob("./std*/*"):
+            path.unlink()
+        with open(pathlib.Path("storage", "database.json"), "w") as fd:
+            json.dump(dict(), fd, indent=4)
 
     elif args.subparsers == 'run':
         r = Runner()
