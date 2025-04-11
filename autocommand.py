@@ -15,27 +15,31 @@ def init_pool_processes(the_lock):
     lock = the_lock
 
 class Runner:
-    def run(self, job, is_locked: bool = True):
+    def run(self, job, is_parallel: bool = True):
         database_path = pathlib.Path("storage", "database.json")
         stderr_path = pathlib.Path("storage", "stderr")
         stdout_path = pathlib.Path("storage", "stdout")
         
-        if is_locked: lock.acquire()
+        if is_parallel: lock.acquire()
         with open(database_path) as fd:
             if job in json.load(fd).values():
-                if is_locked: lock.release()
+                if is_parallel: lock.release()
                 return
-        if is_locked: lock.release()
+        if is_parallel: lock.release()
 
         try:
-            result = subprocess.run(shlex.split(job), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            time_logging = "gringo ./data/rules.cl | while IFS= read -r line; do printf '%.6f %s\n' $EPOCHREALTIME \"$line\"; done"
+            result = subprocess.run(time_logging, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+            # result = subprocess.Popen(shlex.split(job), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            # if self.log_time:
+            #     result.stdout = subprocess.check_output(time_logging, stdin=result.stdout, shell=True)
         
         except FileNotFoundError:
             successful = False
         else:
             successful = True
 
-        if is_locked: lock.acquire()
+        if is_parallel: lock.acquire()
 
         with open(database_path) as fd:
             database = json.load(fd)
@@ -53,12 +57,14 @@ class Runner:
             stderr_path.joinpath(str(index)).write_text('[AUTOCOMMAND] UNKNOWN_COMMAND_ERROR')
 
         database[str(index)] = job
-        with open(database_path, "w") as fd:
-            json.dump(database, fd, indent=4)
+        # with open(database_path, "w") as fd:
+        #     json.dump(database, fd, indent=4)
         
-        if is_locked: lock.release()
+        if is_parallel: lock.release()
     
-    def start(self, parallel: bool):
+    def start(self, parallel: bool, log_time: bool):
+        self.log_time = log_time
+
         if not parallel:
             for job in get_jobs():
                 self.run(job, False)
@@ -75,6 +81,7 @@ def main():
     subparsers = parser.add_subparsers(dest="subparsers")
     run_parser = subparsers.add_parser("run")
     run_parser.add_argument('-p', '--parallel', action='store_true', help="Wheather to run the command in parallel")
+    run_parser.add_argument('-t', '--time', action='store_true', help="Wheather to log the time of each line of output per job")
     clear_parser = subparsers.add_parser("clear")
 
     args = parser.parse_args()
@@ -87,7 +94,7 @@ def main():
 
     elif args.subparsers == 'run':
         r = Runner()
-        r.start(args.parallel)
+        r.start(args.parallel, args.time)
 
 if __name__ == '__main__':
     main()
