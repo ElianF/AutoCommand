@@ -1,0 +1,4 @@
+jobs
+database.json
+/storage/*
+/data/*
