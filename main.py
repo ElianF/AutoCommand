@@ -3,6 +3,7 @@ import pathlib
 import json
 import multiprocessing
 import shlex
+import argparse
 
 def get_jobs() -> list[str]:
     with open("jobs") as fd:
@@ -49,8 +50,8 @@ class Runner:
         
         if is_locked: lock.release()
     
-    def start(self, serial: bool):
-        if serial:
+    def start(self, parallel: bool):
+        if not parallel:
             for job in get_jobs():
                 self.run(job, False)
         
@@ -62,8 +63,20 @@ class Runner:
             pool.join()
 
 def main():
-    r = Runner()
-    r.start(False)
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest="subparsers")
+    run_parser = subparsers.add_parser("run")
+    run_parser.add_argument('-p', '--parallel', action='store_true', help="Wheather to run the command in parallel")
+    clear_parser = subparsers.add_parser("clear")
+
+    args = parser.parse_args()
+
+    if args.subparsers == 'clear':
+        pass
+
+    elif args.subparsers == 'run':
+        r = Runner()
+        r.start(args.parallel)
 
 if __name__ == '__main__':
     main()

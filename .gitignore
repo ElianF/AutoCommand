@@ -2,3 +2,4 @@ jobs
 database.json
 /storage/*
 /data/*
+/.vscode/*
