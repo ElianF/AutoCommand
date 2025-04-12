@@ -69,18 +69,20 @@ class Runner:
         
         if is_parallel: lock.release()
     
-    def start(self, parallel: bool, log_time: bool, mode: bool):
+    def start(self, parallel: bool, log_time: bool, mode: bool, filter_str: str):
         self.log_time = log_time
         self.mode = mode
 
+        jobs = filter(lambda job: job.startswith(filter_str), get_jobs())
+
         if not parallel:
-            for job in get_jobs():
+            for job in jobs:
                 self.run(job, False)
         
         else:
             lock = multiprocessing.Lock()
             pool = multiprocessing.Pool(initializer=init_pool_processes, initargs=(lock,))
-            pool.map(self.run, get_jobs())
+            pool.map(self.run, jobs)
             pool.close()
             pool.join()
 
@@ -91,6 +93,7 @@ def main():
     run_parser.add_argument('-p', '--parallel', action='store_true', help="Whether to run the command in parallel")
     run_parser.add_argument('-t', '--time', action='store_true', help="Whether to log the time for each line of stdout per job")
     run_parser.add_argument('-m', '--mode', default='merge', choices=['swap', 'merge', 'normal'], help="Whether to merge stderr into stdout")
+    run_parser.add_argument('-f', '--filter', default='', help="How the executed lines should look like at the beginning")
     clear_parser = subparsers.add_parser("clear")
 
     args = parser.parse_args()
@@ -103,7 +106,7 @@ def main():
 
     elif args.subparsers == 'run':
         r = Runner()
-        r.start(args.parallel, args.time, args.mode)
+        r.start(args.parallel, args.time, args.mode, args.filter)
 
 if __name__ == '__main__':
     main()
