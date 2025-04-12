@@ -21,7 +21,7 @@ class Runner:
         
         if is_parallel: lock.acquire()
         with open(database_path) as fd:
-            if job in json.load(fd).values():
+            if job in map(lambda d: d['job'], json.load(fd).values()):
                 if is_parallel: lock.release()
                 return
         if is_parallel: lock.release()
@@ -65,7 +65,10 @@ class Runner:
             stdout_path.joinpath(str(index)).write_bytes(b'')
             stderr_path.joinpath(str(index)).write_text(f'[AUTOCOMMAND_ERROR] {exception}')
 
-        database[str(index)] = job
+        database[str(index)] = {
+            'job': job,
+            'terminated': exception == None
+        }
         with open(database_path, "w") as fd:
             json.dump(database, fd, indent=4)
         
@@ -97,13 +100,29 @@ def main():
     run_parser.add_argument('-p', '--parallel', action='store_true', help="Whether to run the command in parallel")
     run_parser.add_argument('-s', '--step-time', action='store_true', help="Whether to log the time for each line of stdout per job")
     run_parser.add_argument('-t', '--total-time', action='store_true', help="Whether to log the total runtime of each job")
-    run_parser.add_argument('-d', '--duration', help="How long the job is allowed to run before intervention")
+    run_parser.add_argument('-d', '--duration', default='1800', help="How long the job is allowed to run before intervention")
     run_parser.add_argument('-m', '--mode', default='merge', choices=['swap', 'merge', 'normal'], help="Whether to merge stderr into stdout")
     run_parser.add_argument('-f', '--filter', default='', help="How the executed lines should look like at the beginning")
-    clear_parser = subparsers.add_parser("clear")
+    subparsers.add_parser("clear")
+    subparsers.add_parser("compact")
 
     args = parser.parse_args()
 
+    if args.subparsers == 'compact':
+        with open(pathlib.Path("storage", "database.json")) as fd:
+            database = json.load(fd)
+        remaining_jobs = get_jobs()
+        for entry in database.values():
+            if not entry['terminated']:
+                forbidden_file = entry['job'].rsplit(' ', maxsplit=1)[-1]
+                for job in get_jobs():
+                    if job.find(forbidden_file) != -1 and job in remaining_jobs:
+                        remaining_jobs.remove(job)
+        with open("jobs", "w") as fd:
+            fd.write('\n'.join(remaining_jobs))
+
+        args.subparsers = 'clear'
+    
     if args.subparsers == 'clear':
         for path in pathlib.Path("storage").rglob("./std*/*"):
             path.unlink()
