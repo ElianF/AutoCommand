@@ -7,7 +7,7 @@ import argparse
 
 def get_jobs() -> list[str]:
     with open("jobs") as fd:
-        jobs = fd.read().split("\n")
+        jobs = fd.read().strip().split("\n")
     return jobs
 
 def init_pool_processes(the_lock):
@@ -28,10 +28,14 @@ class Runner:
         if is_parallel: lock.release()
 
         try:
-            result = subprocess.Popen(shlex.split(job), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            modified_job = job
+            if self.mode == 'merge':
+                modified_job += " 2>&1"
+            elif self.mode == 'swap':
+                modified_job += " 3>&2 2>&1 1>&3"
             if self.log_time:
-                time_logging = "while IFS= read -r line; do printf '%s.%s %s\n' $(date +%s) $(date +%N) \"$line\"; done"
-                result.stdout = subprocess.check_output(time_logging, stdin=result.stdout, shell=True)
+                modified_job = "time " + modified_job + " | while IFS= read -r line; do printf '%s.%s %s\n' $(date +%s) $(date +%N) \"$line\"; done"
+            result = subprocess.run(modified_job, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         
         except FileNotFoundError:
             successful = False
@@ -49,11 +53,12 @@ class Runner:
             index = max([int(i) for i in database.keys()]) + 1
 
         if successful:
-            if self.log_time:
-                stdout_path.joinpath(str(index)).write_bytes(result.stdout)
+            if self.mode == 'swap':
+                stdout_path.joinpath(str(index)).write_bytes(result.stderr)
+                stderr_path.joinpath(str(index)).write_bytes(result.stdout)
             else:
-                stdout_path.joinpath(str(index)).write_bytes(result.stdout.read())
-            stderr_path.joinpath(str(index)).write_bytes(result.stderr.read())
+                stdout_path.joinpath(str(index)).write_bytes(result.stdout)
+                stderr_path.joinpath(str(index)).write_bytes(result.stderr)
         else:
             stdout_path.joinpath(str(index)).write_bytes(b'')
             stderr_path.joinpath(str(index)).write_text('[AUTOCOMMAND] UNKNOWN_COMMAND_ERROR')
@@ -64,8 +69,9 @@ class Runner:
         
         if is_parallel: lock.release()
     
-    def start(self, parallel: bool, log_time: bool):
+    def start(self, parallel: bool, log_time: bool, mode: bool):
         self.log_time = log_time
+        self.mode = mode
 
         if not parallel:
             for job in get_jobs():
@@ -82,8 +88,9 @@ def main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="subparsers")
     run_parser = subparsers.add_parser("run")
-    run_parser.add_argument('-p', '--parallel', action='store_true', help="Wheather to run the command in parallel")
-    run_parser.add_argument('-t', '--time', action='store_true', help="Wheather to log the time of each line of output per job")
+    run_parser.add_argument('-p', '--parallel', action='store_true', help="Whether to run the command in parallel")
+    run_parser.add_argument('-t', '--time', action='store_true', help="Whether to log the time for each line of stdout per job")
+    run_parser.add_argument('-m', '--mode', default='merge', choices=['swap', 'merge', 'normal'], help="Whether to merge stderr into stdout")
     clear_parser = subparsers.add_parser("clear")
 
     args = parser.parse_args()
@@ -96,7 +103,7 @@ def main():
 
     elif args.subparsers == 'run':
         r = Runner()
-        r.start(args.parallel, args.time)
+        r.start(args.parallel, args.time, args.mode)
 
 if __name__ == '__main__':
     main()
