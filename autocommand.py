@@ -28,11 +28,10 @@ class Runner:
         if is_parallel: lock.release()
 
         try:
-            time_logging = "gringo ./data/rules.cl | while IFS= read -r line; do printf '%.6f %s\n' $EPOCHREALTIME \"$line\"; done"
-            result = subprocess.run(time_logging, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-            # result = subprocess.Popen(shlex.split(job), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            # if self.log_time:
-            #     result.stdout = subprocess.check_output(time_logging, stdin=result.stdout, shell=True)
+            result = subprocess.Popen(shlex.split(job), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if self.log_time:
+                time_logging = "while IFS= read -r line; do printf '%s.%s %s\n' $(date +%s) $(date +%N) \"$line\"; done"
+                result.stdout = subprocess.check_output(time_logging, stdin=result.stdout, shell=True)
         
         except FileNotFoundError:
             successful = False
@@ -50,15 +49,18 @@ class Runner:
             index = max([int(i) for i in database.keys()]) + 1
 
         if successful:
-            stdout_path.joinpath(str(index)).write_bytes(result.stdout)
-            stderr_path.joinpath(str(index)).write_bytes(result.stderr)
+            if self.log_time:
+                stdout_path.joinpath(str(index)).write_bytes(result.stdout)
+            else:
+                stdout_path.joinpath(str(index)).write_bytes(result.stdout.read())
+            stderr_path.joinpath(str(index)).write_bytes(result.stderr.read())
         else:
             stdout_path.joinpath(str(index)).write_bytes(b'')
             stderr_path.joinpath(str(index)).write_text('[AUTOCOMMAND] UNKNOWN_COMMAND_ERROR')
 
         database[str(index)] = job
-        # with open(database_path, "w") as fd:
-        #     json.dump(database, fd, indent=4)
+        with open(database_path, "w") as fd:
+            json.dump(database, fd, indent=4)
         
         if is_parallel: lock.release()
     
