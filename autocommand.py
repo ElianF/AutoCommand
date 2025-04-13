@@ -98,10 +98,12 @@ class Runner:
             pool.join()
 
 def analyse_step():
-    regex = re.compile(r'\[src\\main.rs:\d+:\d+] format!\("{} = (?:legal|forbidden)", atom\.to_string\(\)\) = "(\w+)\(.+\) = (legal|forbidden)"')
+    regex = re.compile(r'\[src(?:\\|\/)main.rs:\d+:\d+] format!\("{} = (?:legal|forbidden)", atom\.to_string\(\)\) = "(\w+)\(.+\) = (legal|forbidden)"')
     with open(pathlib.Path("storage", "database.json")) as fd:
         database = json.load(fd)
     for index, entry in database.items():
+        if not entry['terminated']:
+            continue
         analysis = pathlib.Path("storage", "analysis", "steps", str(index))
         stderr = pathlib.Path("storage", "stderr", str(index)).read_text().strip().split('\n')
 
@@ -118,7 +120,7 @@ def analyse_step():
                 valid = regex.match(line).group(2) == 'legal'
                 xs.setdefault(predicate, [list(), list(), list()])
                 xs[predicate][0].append(i)
-                xs[predicate][1].append(int(diff.total_seconds() * 10**6))
+                xs[predicate][1].append(float(diff.total_seconds()))
                 xs[predicate][2].append(valid)
                 i += 1
             except ValueError:
@@ -126,35 +128,73 @@ def analyse_step():
             except AttributeError:
                 continue
         
+        if len(xs) == 0:
+            continue
         plt.close()
         for ((predicate, (x, diff, valid)), color) in zip(xs.items(), plt.rcParams['axes.prop_cycle'].by_key()['color']):
-            plt.plot(np.array(x)[valid], np.log10(diff)[valid], marker='o', linestyle='None', markerfacecolor=None, color=color, label=f'{predicate} (valid)')
+            plt.plot(np.array(x)[valid], np.array(diff)[valid], marker='.', linestyle='None', markerfacecolor=None, color=color, label=f'{predicate} (valid)')
             if not all(valid):
-                plt.plot(np.array(x)[np.invert(valid)], np.log10(diff)[np.invert(valid)], marker='o', linestyle='None', markerfacecolor='None', color=color, label=f'{predicate} (forbidden)')
+                plt.plot(np.array(x)[np.invert(valid)], np.array(diff)[np.invert(valid)], marker='.', linestyle='None', markerfacecolor='None', color=color, label=f'{predicate} (forbidden)')
+        plt.yscale('log')
         plt.legend()
         plt.savefig(analysis)
 
 def analyse_total():
-    regex = re.compile('(?:\d+\.\d+ )?(\d+\.\d+)user (\d+\.\d+)system (\d+:\d+\.\d+)elapsed (\d+)%CPU')
-    # regex = re.compile('(?:\d+\.\d+ )?(\d+\.\d+)user (\d+\.\d+)system (\d+:\d+\.\d+)elapsed (\d+)%CPU.+?\n(?:\d+\.\d+ )?(\d+)inputs\+(\d+)outputs \((\d+)major\+(\d+)minor\)pagefaults (\d+)swaps')
+    regex = re.compile(r'(?:\d+\.\d+ )?(\d+\.\d+)user (\d+\.\d+)system (\d+:\d+\.\d+)elapsed (\d+)%CPU')
+    # regex = re.compile(r'(?:\d+\.\d+ )?(\d+\.\d+)user (\d+\.\d+)system (\d+:\d+\.\d+)elapsed (\d+)%CPU.+?\n(?:\d+\.\d+ )?(\d+)inputs\+(\d+)outputs \((\d+)major\+(\d+)minor\)pagefaults (\d+)swaps')
     with open(pathlib.Path("storage", "database.json")) as fd:
         database = json.load(fd)
+    with open(pathlib.Path("data", "buckets.json")) as fd:
+        buckets = json.load(fd)
     
+    translation = {
+        'gringo': 'gringo',
+        './data/dlv-2.1.2-linux-x86_64': 'dlv',
+        './data/grounder': 'ours',
+        'java': 'alpha'
+    }
+    xs = dict()
     for index, entry in database.items():
-        analysis = pathlib.Path("storage", "analysis", "totals", str(index))
+        if not entry['terminated']:
+            continue
         stderr = pathlib.Path("storage", "stderr", str(index)).read_text().strip()
         stdout = pathlib.Path("storage", "stdout", str(index)).read_text().strip()
+        characteristica = entry['job'].rsplit(' ', maxsplit=1)[-1]
+        reasoner = entry['job'].split(' ', maxsplit=1)[0]
 
         for file in [stderr, stdout]:
             try:
-                user, system, elapsed, cpu = next(regex.finditer(file)).groups()
-                print(user, system, elapsed, cpu)
+                user, _system, _elapsed, _cpu = next(regex.finditer(file)).groups()
+                success = False
+                for test, subtests in buckets.items():
+                    for subtest, files in subtests.items():
+                        if characteristica in files:
+                            xs.setdefault(test, dict()).setdefault(translation[reasoner], dict()).setdefault(subtest, list()).append(float(user))
+                            success = True
+                            break
+                    if success:
+                        break
+
             except AttributeError as e:
-                print(e)
                 continue
             else:
                 break
-
+    
+    for test, reasoners in xs.items():
+        plt.close()
+        for reasoner, subtests in reasoners.items():
+            x = list()
+            y = list()
+            for subtest, results in subtests.items():
+                if len(results) == 0:
+                    continue
+                x.append(int(subtest))
+                y.append(sum(results)/len(results))
+            plt.plot(*zip(*sorted(zip(x, y), key=lambda d: d[0])), label=reasoner)
+        plt.yscale('log')
+        plt.title(test)
+        plt.legend()
+        plt.savefig(pathlib.Path("storage", "analysis", "totals", test))
 
 def main():
     parser = argparse.ArgumentParser()
