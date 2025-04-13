@@ -102,7 +102,7 @@ def analyse_step():
     with open(pathlib.Path("storage", "database.json")) as fd:
         database = json.load(fd)
     for index, entry in database.items():
-        analysis = pathlib.Path("storage", "analysis", str(index))
+        analysis = pathlib.Path("storage", "analysis", "steps", str(index))
         stderr = pathlib.Path("storage", "stderr", str(index)).read_text().strip().split('\n')
 
         i = 0
@@ -135,7 +135,26 @@ def analyse_step():
         plt.savefig(analysis)
 
 def analyse_total():
-    pass
+    regex = re.compile('(?:\d+\.\d+ )?(\d+\.\d+)user (\d+\.\d+)system (\d+:\d+\.\d+)elapsed (\d+)%CPU')
+    # regex = re.compile('(?:\d+\.\d+ )?(\d+\.\d+)user (\d+\.\d+)system (\d+:\d+\.\d+)elapsed (\d+)%CPU.+?\n(?:\d+\.\d+ )?(\d+)inputs\+(\d+)outputs \((\d+)major\+(\d+)minor\)pagefaults (\d+)swaps')
+    with open(pathlib.Path("storage", "database.json")) as fd:
+        database = json.load(fd)
+    
+    for index, entry in database.items():
+        analysis = pathlib.Path("storage", "analysis", "totals", str(index))
+        stderr = pathlib.Path("storage", "stderr", str(index)).read_text().strip()
+        stdout = pathlib.Path("storage", "stdout", str(index)).read_text().strip()
+
+        for file in [stderr, stdout]:
+            try:
+                user, system, elapsed, cpu = next(regex.finditer(file)).groups()
+                print(user, system, elapsed, cpu)
+            except AttributeError as e:
+                print(e)
+                continue
+            else:
+                break
+
 
 def main():
     parser = argparse.ArgumentParser()
