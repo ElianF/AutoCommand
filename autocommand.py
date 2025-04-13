@@ -1,8 +1,12 @@
+import datetime
 import subprocess
 import pathlib
 import json
 import multiprocessing
 import argparse
+import re
+from matplotlib import pyplot as plt
+import numpy as np
 
 def get_jobs() -> list[str]:
     with open("jobs") as fd:
@@ -93,6 +97,46 @@ class Runner:
             pool.close()
             pool.join()
 
+def analyse_step():
+    regex = re.compile(r'\[src\\main.rs:\d+:\d+] format!\("{} = (?:legal|forbidden)", atom\.to_string\(\)\) = "(\w+)\(.+\) = (legal|forbidden)"')
+    with open(pathlib.Path("storage", "database.json")) as fd:
+        database = json.load(fd)
+    for index, entry in database.items():
+        analysis = pathlib.Path("storage", "analysis", str(index))
+        stderr = pathlib.Path("storage", "stderr", str(index)).read_text().strip().split('\n')
+
+        i = 0
+        xs = dict()
+        for line1, line2 in zip(stderr[:-1], stderr[1:]):
+            try:
+                timestamp1, _ = line1.split(" ", maxsplit=1)
+                timestamp1 = datetime.datetime.fromtimestamp(float(timestamp1))
+                timestamp2, line = line2.split(" ", maxsplit=1)
+                timestamp2 = datetime.datetime.fromtimestamp(float(timestamp2))
+                diff = timestamp2 - timestamp1
+                predicate = regex.match(line).group(1)
+                valid = regex.match(line).group(2) == 'legal'
+                xs.setdefault(predicate, [list(), list(), list()])
+                xs[predicate][0].append(i)
+                xs[predicate][1].append(int(diff.total_seconds() * 10**6))
+                xs[predicate][2].append(valid)
+                i += 1
+            except ValueError:
+                break
+            except AttributeError:
+                continue
+        
+        plt.close()
+        for ((predicate, (x, diff, valid)), color) in zip(xs.items(), plt.rcParams['axes.prop_cycle'].by_key()['color']):
+            plt.plot(np.array(x)[valid], np.log10(diff)[valid], marker='o', linestyle='None', markerfacecolor=None, color=color, label=f'{predicate} (valid)')
+            if not all(valid):
+                plt.plot(np.array(x)[np.invert(valid)], np.log10(diff)[np.invert(valid)], marker='o', linestyle='None', markerfacecolor='None', color=color, label=f'{predicate} (forbidden)')
+        plt.legend()
+        plt.savefig(analysis)
+
+def analyse_total():
+    pass
+
 def main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="subparsers")
@@ -105,6 +149,7 @@ def main():
     run_parser.add_argument('-f', '--filter', default='', help="How the executed lines should look like at the beginning")
     subparsers.add_parser("clear")
     subparsers.add_parser("compact")
+    analyse_parser = subparsers.add_parser("analyse")
 
     args = parser.parse_args()
 
@@ -124,12 +169,16 @@ def main():
         args.subparsers = 'clear'
     
     if args.subparsers == 'clear':
-        for path in pathlib.Path("storage").rglob("./std*/*"):
+        for path in pathlib.Path("storage").rglob("./*/*"):
             path.unlink()
         with open(pathlib.Path("storage", "database.json"), "w") as fd:
             json.dump(dict(), fd, indent=4)
+    
+    if args.subparsers == 'analyse':
+        analyse_step()
+        analyse_total()
 
-    elif args.subparsers == 'run':
+    if args.subparsers == 'run':
         r = Runner()
         r.start(args)
 

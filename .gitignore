@@ -3,3 +3,4 @@ database.json
 /storage/*
 /data/*
 /.vscode/*
+/.venv/*
