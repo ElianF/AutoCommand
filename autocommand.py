@@ -98,7 +98,7 @@ class Runner:
             pool.join()
 
 def analyse_step():
-    regex = re.compile(r'\[src(?:\\|\/)main.rs:\d+:\d+] format!\("{} = (?:legal|forbidden)", atom\.to_string\(\)\) = "(\w+)\(.+\) = (legal|forbidden)"')
+    regex = re.compile(r'\[src(?:\\|\/)main.rs:\d+:\d+] format!\("{} = (?:valid|forbidden)", atom\.to_string\(\)\) = "(\w+)\(.+\) = (valid|forbidden)"')
     with open(pathlib.Path("storage", "database.json")) as fd:
         database = json.load(fd)
     for index, entry in database.items():
@@ -117,7 +117,7 @@ def analyse_step():
                 timestamp2 = datetime.datetime.fromtimestamp(float(timestamp2))
                 diff = timestamp2 - timestamp1
                 predicate = regex.match(line).group(1)
-                valid = regex.match(line).group(2) == 'legal'
+                valid = regex.match(line).group(2) == 'valid'
                 xs.setdefault(predicate, [list(), list(), list()])
                 xs[predicate][0].append(i)
                 xs[predicate][1].append(float(diff.total_seconds()))
@@ -229,7 +229,8 @@ def main():
     
     if args.subparsers == 'clear':
         for path in pathlib.Path("storage").rglob("./*/*"):
-            path.unlink()
+            if path.is_file():
+                path.unlink()
         with open(pathlib.Path("storage", "database.json"), "w") as fd:
             json.dump(dict(), fd, indent=4)
     
