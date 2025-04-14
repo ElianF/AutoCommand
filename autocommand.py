@@ -32,6 +32,7 @@ class Runner:
 
         exception = None
         try:
+            print(job)
             modified_job = job
             if self.mode == 'merge':
                 modified_job += " 2>&1"
