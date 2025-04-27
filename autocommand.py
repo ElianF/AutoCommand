@@ -137,8 +137,12 @@ def analyse_step():
             if not all(valid):
                 plt.plot(np.array(x)[np.invert(valid)], np.array(diff)[np.invert(valid)], marker='.', linestyle='None', markerfacecolor='None', color=color, label=f'{predicate} (forbidden)')
         plt.yscale('log')
+        plt.title(entry['job'], fontsize=11, wrap=True)
+        plt.xlabel('Anzahl hergeleiteter Atome')
+        plt.ylabel('Zeit [s]')
         plt.legend()
-        plt.savefig(analysis)
+        plt.gcf().set_size_inches(plt.gcf().get_figwidth()*1.2, plt.gcf().get_figheight()*1.2)
+        plt.savefig(analysis, dpi=200)
 
 def analyse_total():
     regex = re.compile(r'(?:\d+\.\d+ )?(\d+\.\d+)user (\d+\.\d+)system (\d+:\d+\.\d+)elapsed (\d+)%CPU')
@@ -161,6 +165,8 @@ def analyse_total():
         stderr = pathlib.Path("storage", "stderr", str(index)).read_text().strip()
         stdout = pathlib.Path("storage", "stdout", str(index)).read_text().strip()
         characteristica = entry['job'].rsplit(' ', maxsplit=1)[-1]
+        if not characteristica.startswith('.'):
+            characteristica = entry['job'].rsplit(' ', maxsplit=2)[-2]
         reasoner = entry['job'].split(' ', maxsplit=1)[0]
 
         for file in [stderr, stdout]:
@@ -190,12 +196,14 @@ def analyse_total():
                 if len(results) == 0:
                     continue
                 x.append(int(subtest))
-                y.append(sum(results)/len(results))
+                y.append(max(5*10**-4, sum(results)/len(results)))
             plt.plot(*zip(*sorted(zip(x, y), key=lambda d: d[0])), label=reasoner)
         plt.yscale('log')
         plt.title(test)
+        plt.xlabel('Problemgröße [a.u.]')
+        plt.ylabel('Gesamtdauer [s]')
         plt.legend()
-        plt.savefig(pathlib.Path("storage", "analysis", "totals", test))
+        plt.savefig(pathlib.Path("storage", "analysis", "totals", test), dpi=200)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -236,8 +244,8 @@ def main():
             json.dump(dict(), fd, indent=4)
     
     if args.subparsers == 'analyse':
-        analyse_step()
         analyse_total()
+        analyse_step()
 
     if args.subparsers == 'run':
         r = Runner()
