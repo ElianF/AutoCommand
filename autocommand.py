@@ -86,7 +86,7 @@ class Runner:
         self.timeout = float(args.duration)
         self.mode = args.mode
 
-        jobs = filter(lambda job: job.startswith(args.filter), get_jobs())
+        jobs = filter(lambda job: job != "" and job.startswith(args.filter), get_jobs())
 
         if not args.parallel:
             for job in jobs:
