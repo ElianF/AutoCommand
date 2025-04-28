@@ -1,4 +1,5 @@
 import datetime
+import math
 import subprocess
 import pathlib
 import json
@@ -191,6 +192,7 @@ def analyse_total():
     
     for test, reasoners in xs.items():
         plt.close()
+        # x_range = [math.inf, 0]
         for reasoner, subtests in reasoners.items():
             x = list()
             y = list()
@@ -199,11 +201,17 @@ def analyse_total():
                     continue
                 x.append(int(subtest))
                 y.append(max(5*10**-4, sum(results)/len(results)))
+                # if x[-1] < x_range[0]:
+                #     x_range[0] = x[-1]
+                # elif x_range[1] < x[-1]:
+                #     x_range[1] = x[-1]
             plt.plot(*zip(*sorted(zip(x, y), key=lambda d: d[0])), label=reasoner)
         plt.yscale('log')
         plt.title(test)
         plt.xlabel('Problemgröße [a.u.]')
         plt.ylabel('Gesamtdauer [s]')
+        # plt.gcf().subplots_adjust(left=0.17)
+        # plt.xticks(range(x_range[0], math.ceil(x_range[1])+1))
         plt.legend()
         plt.savefig(pathlib.Path("storage", "analysis", "totals", test), dpi=200)
 
