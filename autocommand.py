@@ -184,6 +184,8 @@ def analyse_total():
 
             except AttributeError as e:
                 continue
+            except StopIteration as e:
+                continue
             else:
                 break
     
