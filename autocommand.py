@@ -8,8 +8,9 @@ import argparse
 import re
 from matplotlib import pyplot as plt
 import numpy as np
+from tqdm import tqdm
 
-def get_jobs() -> list[str]:
+def get_jobs():
     with open("jobs") as fd:
         jobs = fd.read().strip().split("\n")
     return jobs
@@ -103,7 +104,7 @@ def analyse_step():
     regex = re.compile(r'\[src(?:\\|\/)main.rs:\d+:\d+] format!\("{} = (?:valid|forbidden)", atom\.to_string\(\)\) = "(\w+)\(.+\) = (valid|forbidden)"')
     with open(pathlib.Path("storage", "database.json")) as fd:
         database = json.load(fd)
-    for index, entry in database.items():
+    for index, entry in tqdm(database.items()):
         if not entry['terminated']:
             continue
         analysis = pathlib.Path("storage", "analysis", "steps", str(index))
@@ -154,13 +155,13 @@ def analyse_total():
         buckets = json.load(fd)
     
     translation = {
-        'gringo': 'gringo',
-        './data/dlv-2.1.2-linux-x86_64': 'dlv',
-        './data/grounder': 'ours',
-        'java': 'alpha'
+        'gringo': 'Gringo',
+        './data/dlv-2.1.2-linux-x86_64': 'DLV',
+        './data/grounder': 'Ours (mit Optimierung)',
+        'java': 'Alpha'
     }
     xs = dict()
-    for index, entry in database.items():
+    for index, entry in tqdm(database.items()):
         if not entry['terminated']:
             continue
         stderr = pathlib.Path("storage", "stderr", str(index)).read_text().strip()
@@ -169,6 +170,10 @@ def analyse_total():
         if not characteristica.startswith('.'):
             characteristica = entry['job'].rsplit(' ', maxsplit=2)[-2]
         reasoner = entry['job'].split(' ', maxsplit=1)[0]
+        if '--pass' in entry['job']:
+            reasonder = 'Ours (ohne Optimierung)'
+        else:
+            reasoner = translation[reasoner]
 
         for file in [stderr, stdout]:
             try:
@@ -177,7 +182,7 @@ def analyse_total():
                 for test, subtests in buckets.items():
                     for subtest, files in subtests.items():
                         if characteristica in files:
-                            xs.setdefault(test, dict()).setdefault(translation[reasoner], dict()).setdefault(subtest, list()).append(float(user))
+                            xs.setdefault(test, dict()).setdefault(reasoner, dict()).setdefault(subtest, list()).append(float(user))
                             success = True
                             break
                     if success:
