@@ -217,6 +217,8 @@ def analyse_total():
                 #     x_range[0] = x[-1]
                 # elif x_range[1] < x[-1]:
                 #     x_range[1] = x[-1]
+            plt.figure(1).gca().set_xticks(sorted(set(x)))
+            plt.figure(2).gca().set_xticks(sorted(set(x)))
             plt.figure(1).gca().plot(*zip(*sorted(zip(x, y1), key=lambda d: d[0])), label=reasoner)
             plt.figure(2).gca().plot(*zip(*sorted(zip(x, y2), key=lambda d: d[0])), label=reasoner)
         plt.figure(1).gca().set_yscale('log')
