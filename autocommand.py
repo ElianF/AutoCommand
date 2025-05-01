@@ -166,12 +166,15 @@ def analyse_total():
             continue
         stderr = pathlib.Path("storage", "stderr", str(index)).read_text().strip()
         stdout = pathlib.Path("storage", "stdout", str(index)).read_text().strip()
-        characteristica = entry['job'].rsplit(' ', maxsplit=1)[-1]
-        if not characteristica.startswith('.'):
-            characteristica = entry['job'].rsplit(' ', maxsplit=2)[-2]
+        for elem in (entry['job'].split(' '))[::-1]:
+            if elem.startswith('.'):
+                characteristica = elem
+                break
         reasoner = entry['job'].split(' ', maxsplit=1)[0]
         if '--pass' in entry['job']:
-            reasonder = 'Ours (ohne Optimierung)'
+            reasoner = 'Ours (ohne Validierung)'
+        elif '--preheat' not in entry['job']:
+            reasoner = 'Ours (ohne Optimierung)'
         else:
             reasoner = translation[reasoner]
 
