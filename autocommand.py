@@ -182,7 +182,7 @@ def analyse_total():
                 for test, subtests in buckets.items():
                     for subtest, files in subtests.items():
                         if characteristica in files:
-                            xs.setdefault(test, dict()).setdefault(reasoner, dict()).setdefault(subtest, list()).append(float(user))
+                            xs.setdefault(test, dict()).setdefault(reasoner, dict()).setdefault(subtest, list()).append((float(user), len(stdout.splitlines())))
                             success = True
                             break
                     if success:
@@ -196,29 +196,43 @@ def analyse_total():
                 break
     
     for test, reasoners in xs.items():
-        plt.close()
+        plt.close(1)
+        plt.close(2)
         # x_range = [math.inf, 0]
         for reasoner, subtests in reasoners.items():
             x = list()
-            y = list()
+            y1 = list()
+            y2 = list()
             for subtest, results in subtests.items():
+                user, size = list(zip(*results))
                 if len(results) == 0:
                     continue
                 x.append(int(subtest))
-                y.append(max(5*10**-4, sum(results)/len(results)))
+                y1.append(max(5*10**-4, sum(user)/len(user)))
+                y2.append(sum(size)/len(size))
                 # if x[-1] < x_range[0]:
                 #     x_range[0] = x[-1]
                 # elif x_range[1] < x[-1]:
                 #     x_range[1] = x[-1]
-            plt.plot(*zip(*sorted(zip(x, y), key=lambda d: d[0])), label=reasoner)
-        plt.yscale('log')
-        plt.title(test)
-        plt.xlabel('Problemgröße [a.u.]')
-        plt.ylabel('Gesamtdauer [s]')
-        # plt.gcf().subplots_adjust(left=0.17)
-        # plt.xticks(range(x_range[0], math.ceil(x_range[1])+1))
-        plt.legend()
-        plt.savefig(pathlib.Path("storage", "analysis", "totals", test), dpi=200)
+            plt.figure(1).gca().plot(*zip(*sorted(zip(x, y1), key=lambda d: d[0])), label=reasoner)
+            plt.figure(2).gca().plot(*zip(*sorted(zip(x, y2), key=lambda d: d[0])), label=reasoner)
+        plt.figure(1).gca().set_yscale('log')
+        plt.figure(1).gca().set_title(f"{test} - Gesamtdauer")
+        plt.figure(1).gca().set_xlabel('Problemgröße [a.u.]')
+        plt.figure(1).gca().set_ylabel('Gesamtdauer [s]')
+        # plt.figure(1).subplots_adjust(left=0.17)
+        # plt.figure(1).gca().set_xticks(range(x_range[0], math.ceil(x_range[1])+1))
+        plt.figure(1).gca().legend()
+        plt.figure(1).savefig(pathlib.Path("storage", "analysis", "totals", f"{test}_time"), dpi=200)
+
+        # plt.figure(2).gca().set_yscale('log')
+        plt.figure(2).gca().set_title(f"{test} - Groundingröße")
+        plt.figure(2).gca().set_xlabel('Problemgröße [a.u.]')
+        plt.figure(2).gca().set_ylabel('Größe Grounding [Zeilen]')
+        # plt.figure(2).subplots_adjust(left=0.17)
+        # plt.figure(2).gca().set_xticks(range(x_range[0], math.ceil(x_range[1])+1))
+        plt.figure(2).gca().legend()
+        plt.figure(2).savefig(pathlib.Path("storage", "analysis", "totals", f"{test}_size"), dpi=200)
 
 def main():
     parser = argparse.ArgumentParser()
