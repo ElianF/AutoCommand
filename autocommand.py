@@ -173,7 +173,7 @@ def analyse_total():
         reasoner = entry['job'].split(' ', maxsplit=1)[0]
         if '--pass' in entry['job']:
             reasoner = 'Ours (ohne Validierung)'
-        elif '--preheat' not in entry['job']:
+        elif reasoner == './data/grounder' and '--preheat' not in entry['job']:
             reasoner = 'Ours (ohne Optimierung)'
         else:
             reasoner = translation[reasoner]
