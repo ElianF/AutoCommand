@@ -104,11 +104,35 @@ def analyse_step():
     regex = re.compile(r'\[src(?:\\|\/)main.rs:\d+:\d+] format!\("{} = (?:valid|forbidden)", atom\.to_string\(\)\) = "(\w+)\(.+\) = (valid|forbidden)"')
     with open(pathlib.Path("storage", "database.json")) as fd:
         database = json.load(fd)
+    with open(pathlib.Path("data", "buckets.json")) as fd:
+        buckets = json.load(fd)
+    
     for index, entry in tqdm(database.items()):
         if not entry['terminated']:
             continue
         analysis = pathlib.Path("storage", "analysis", "steps", str(index))
         stderr = pathlib.Path("storage", "stderr", str(index)).read_text().strip().split('\n')
+        for elem in (entry['job'].split(' '))[::-1]:
+            if elem.startswith('.'):
+                characteristica = elem
+                break
+        
+        testname = None
+        for test, subtests in buckets.items():
+            if testname != None:
+                break
+            for subtest, files in subtests.items():
+                if characteristica in files:
+                    if '--pass' in entry['job']:
+                        optimisation = 'ohne Validierung'
+                    elif '--preheat' in entry['job']:
+                        optimisation = 'mit Optimierung'
+                    else:
+                        optimisation = 'ohne Optimierung'
+                    testname = f"{test} ({subtest}, {optimisation})"
+                    break
+        if testname == None:
+            continue
 
         i = 0
         xs = dict()
@@ -139,7 +163,7 @@ def analyse_step():
             if not all(valid):
                 plt.plot(np.array(x)[np.invert(valid)], np.array(diff)[np.invert(valid)], marker='.', linestyle='None', markerfacecolor='None', color=color, label=f'{predicate} (forbidden)')
         plt.yscale('log')
-        plt.title(entry['job'], fontsize=11, wrap=True)
+        plt.title(testname, fontsize=12, wrap=True)
         plt.xlabel('Anzahl hergeleiteter Atome')
         plt.ylabel('Zeit [s]')
         plt.legend()
