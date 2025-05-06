@@ -262,7 +262,7 @@ def analyse_total():
         # plt.figure(2).gca().set_yscale('log')
         plt.figure(2).gca().set_title(f"{test} - Groundingröße")
         plt.figure(2).gca().set_xlabel('Problemgröße [a.u.]')
-        plt.figure(2).gca().set_ylabel('Größe Grounding [Zeilen]')
+        plt.figure(2).gca().set_ylabel('Groundinggröße [Zeilen]')
         # plt.figure(2).subplots_adjust(left=0.17)
         # plt.figure(2).gca().set_xticks(range(x_range[0], math.ceil(x_range[1])+1))
         plt.figure(2).gca().legend()
