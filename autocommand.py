@@ -161,6 +161,8 @@ def analyse_step():
         if len(xs) == 0:
             continue
         plt.gcf().clear()
+        plt.gca().clear()
+        plt.close()
         for ((predicate, (x, diff, valid)), color) in zip(xs.items(), plt.rcParams['axes.prop_cycle'].by_key()['color']):
             plt.plot(np.array(x)[valid], np.array(diff)[valid], marker='.', linestyle='None', markerfacecolor=None, color=color, label=f'{predicate} (valid)')
             if not all(valid):
