@@ -129,7 +129,10 @@ def analyse_step():
                         optimisation = 'mit Optimierung'
                     else:
                         optimisation = 'ohne Optimierung'
-                    testname = f"{test} ({subtest}, {optimisation})"
+                    if subtest != "":
+                        testname = f"{test} ({subtest}, {optimisation})"
+                    else:
+                        testname = f"{test} ({optimisation})"
                     break
         if testname == None:
             continue
@@ -164,7 +167,7 @@ def analyse_step():
                 plt.plot(np.array(x)[np.invert(valid)], np.array(diff)[np.invert(valid)], marker='.', linestyle='None', markerfacecolor='None', color=color, label=f'{predicate} (forbidden)')
         plt.yscale('log')
         plt.title(testname, fontsize=12, wrap=True)
-        plt.xlabel('Anzahl hergeleiteter Atome')
+        plt.xlabel('Kumulative Anzahl hergeleiteter Atome')
         plt.ylabel('Zeit [s]')
         plt.legend()
         plt.gcf().set_size_inches(plt.gcf().get_figwidth()*1.2, plt.gcf().get_figheight()*1.2)
@@ -231,6 +234,8 @@ def analyse_total():
             y1 = list()
             y2 = list()
             for subtest, results in subtests.items():
+                if subtest == "":
+                    continue
                 user, size = list(zip(*results))
                 if len(results) == 0:
                     continue
@@ -241,8 +246,8 @@ def analyse_total():
                 #     x_range[0] = x[-1]
                 # elif x_range[1] < x[-1]:
                 #     x_range[1] = x[-1]
-            plt.figure(1).gca().set_xticks(sorted(set(x)))
-            plt.figure(2).gca().set_xticks(sorted(set(x)))
+            # plt.figure(1).gca().set_xticks(sorted(set(x)))
+            # plt.figure(2).gca().set_xticks(sorted(set(x)))
             plt.figure(1).gca().plot(*zip(*sorted(zip(x, y1), key=lambda d: d[0])), label=reasoner)
             plt.figure(2).gca().plot(*zip(*sorted(zip(x, y2), key=lambda d: d[0])), label=reasoner)
         plt.figure(1).gca().set_yscale('log')
