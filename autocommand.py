@@ -166,7 +166,7 @@ def analyse_step():
             if not all(valid):
                 plt.plot(np.array(x)[np.invert(valid)], np.array(diff)[np.invert(valid)], marker='.', linestyle='None', markerfacecolor='None', color=color, label=f'{predicate} (forbidden)')
         plt.yscale('log')
-        plt.title(testname, fontsize=12, wrap=True)
+        plt.title(testname)
         plt.xlabel('Kumulative Anzahl hergeleiteter Atome')
         plt.ylabel('Zeit [s]')
         plt.legend()
