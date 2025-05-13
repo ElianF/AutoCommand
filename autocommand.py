@@ -170,7 +170,7 @@ def analyse_step():
         plt.yscale('log')
         plt.title(testname)
         plt.xlabel('Kumulative Anzahl hergeleiteter Atome')
-        plt.ylabel('Zeit [s]')
+        plt.ylabel('Herleitungsdauer [s]')
         plt.legend()
         plt.gcf().set_size_inches(plt.gcf().get_figwidth()*1.2, plt.gcf().get_figheight()*1.2)
         plt.savefig(analysis, dpi=200)
@@ -230,7 +230,7 @@ def analyse_total():
     for test, reasoners in xs.items():
         plt.close(1)
         plt.close(2)
-        # x_range = [math.inf, 0]
+        x_range = [math.inf, 0]
         for reasoner, subtests in reasoners.items():
             x = list()
             y1 = list()
@@ -244,18 +244,18 @@ def analyse_total():
                 x.append(int(subtest))
                 y1.append(max(5*10**-4, sum(user)/len(user)))
                 y2.append(sum(size)/len(size))
-                # if x[-1] < x_range[0]:
-                #     x_range[0] = x[-1]
-                # elif x_range[1] < x[-1]:
-                #     x_range[1] = x[-1]
+                if x[-1] < x_range[0]:
+                    x_range[0] = x[-1]
+                elif x_range[1] < x[-1]:
+                    x_range[1] = x[-1]
             # plt.figure(1).gca().set_xticks(sorted(set(x)))
             # plt.figure(2).gca().set_xticks(sorted(set(x)))
             plt.figure(1).gca().plot(*zip(*sorted(zip(x, y1), key=lambda d: d[0])), label=reasoner)
             plt.figure(2).gca().plot(*zip(*sorted(zip(x, y2), key=lambda d: d[0])), label=reasoner)
         plt.figure(1).gca().set_yscale('log')
-        plt.figure(1).gca().set_title(f"{test} - Gesamtdauer")
+        plt.figure(1).gca().set_title(f"{test} - Gesamtlaufzeit")
         plt.figure(1).gca().set_xlabel('Problemgröße [a.u.]')
-        plt.figure(1).gca().set_ylabel('Gesamtdauer [s]')
+        plt.figure(1).gca().set_ylabel('Gesamtlaufzeit [s]')
         # plt.figure(1).subplots_adjust(left=0.17)
         # plt.figure(1).gca().set_xticks(range(x_range[0], math.ceil(x_range[1])+1))
         plt.figure(1).gca().legend()
