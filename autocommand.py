@@ -309,8 +309,8 @@ def main():
             json.dump(dict(), fd, indent=4)
     
     if args.subparsers == 'analyse':
-        analyse_total()
         analyse_step()
+        analyse_total()
 
     if args.subparsers == 'run':
         r = Runner()
